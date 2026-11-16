@@ -83,3 +83,14 @@
     }
   }
 }
+
+.form__message {
+  color: $colorGreen;
+  font-size: 20px;
+  text-align: center;
+}
+
+.form__button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
