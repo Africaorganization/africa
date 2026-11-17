@@ -7,51 +7,58 @@ import path from 'path';
 import child_process from 'child_process';
 import { env } from 'process';
 
-const baseFolder =
-    env.APPDATA !== undefined && env.APPDATA !== ''
-        ? `${env.APPDATA}/ASP.NET/https`
-        : `${env.HOME}/.aspnet/https`;
+// The HTTPS dev certificate is only needed for the local dev server,
+// so production builds (`vite build`) don't depend on `dotnet dev-certs`.
+function getDevHttpsOptions() {
+    const baseFolder =
+        env.APPDATA !== undefined && env.APPDATA !== ''
+            ? `${env.APPDATA}/ASP.NET/https`
+            : `${env.HOME}/.aspnet/https`;
 
-const certificateName = "africa.client";
-const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
-const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
+    const certificateName = "africa.client";
+    const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
+    const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
 
-if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
-    if (0 !== child_process.spawnSync('dotnet', [
-        'dev-certs',
-        'https',
-        '--export-path',
-        certFilePath,
-        '--format',
-        'Pem',
-        '--no-password',
-    ], { stdio: 'inherit', }).status) {
-        throw new Error("Could not create certificate.");
+    if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
+        fs.mkdirSync(baseFolder, { recursive: true });
+        if (0 !== child_process.spawnSync('dotnet', [
+            'dev-certs',
+            'https',
+            '--export-path',
+            certFilePath,
+            '--format',
+            'Pem',
+            '--no-password',
+        ], { stdio: 'inherit', }).status) {
+            throw new Error("Could not create certificate.");
+        }
     }
+
+    return {
+        key: fs.readFileSync(keyFilePath),
+        cert: fs.readFileSync(certFilePath),
+    };
 }
 
 const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}` :
     env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'https://localhost:7272';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
     plugins: [plugin()],
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },
-    server: {
+    server: command === 'serve' ? {
         proxy: {
-            '^/weatherforecast': {
+            '^/api': {
                 target,
                 secure: false
             }
         },
         port: 5173,
-        https: {
-            key: fs.readFileSync(keyFilePath),
-            cert: fs.readFileSync(certFilePath),
-        }
-    }
-})
+        https: getDevHttpsOptions(),
+    } : undefined
+}));
