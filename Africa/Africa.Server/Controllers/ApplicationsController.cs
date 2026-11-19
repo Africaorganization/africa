@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Africa.Server.Data;
 using System.ComponentModel.DataAnnotations;
@@ -24,6 +25,7 @@ namespace Africa.Server.Controllers
         // POST: api/Applications
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
+        [EnableRateLimiting(Africa.Server.Startup.ApplicationsRateLimit)]
         public async Task<ApplicationCreateResult> PostApplication(CreateApplicationModel applicationModel)
         {
             var application = new Application();

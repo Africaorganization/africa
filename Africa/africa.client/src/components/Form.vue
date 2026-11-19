@@ -59,7 +59,9 @@ export default {
         this.message = "Thank you! We will contact you soon.";
       } catch (error) {
         const errors = error.response?.data?.errors;
-        this.message = errors
+        this.message = error.response?.status === 429
+          ? "Too many applications sent. Please try again in a few minutes."
+          : errors
           ? Object.values(errors).flat().join(" ")
           : "Something went wrong. Please try again later.";
       } finally {

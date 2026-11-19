@@ -1,4 +1,7 @@
-﻿using Africa.Server.Data;
+﻿using System.Threading.RateLimiting;
+using Africa.Server.Data;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Africa.Server
@@ -6,6 +9,7 @@ namespace Africa.Server
     public class Startup
     {
         private const string CorsPolicy = "ClientOrigins";
+        public const string ApplicationsRateLimit = "Applications";
 
         public IConfiguration Configuration { get; }
 
@@ -40,12 +44,43 @@ namespace Africa.Server
                 .AllowAnyMethod()
                 .AllowAnyHeader()));
 
+            // Azure App Service sits behind a front end, so read the real visitor IP
+            // from X-Forwarded-For. Only the last hop (added by Azure) is trusted,
+            // so a client can't spoof its IP to dodge the rate limit.
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.ForwardLimit = 1;
+                options.KnownIPNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+
+            // Limit how often one visitor (client IP) can submit the application form,
+            // so the database can't be flooded by a script.
+            int permitLimit = Configuration.GetValue("RateLimiting:Applications:PermitLimit", 5);
+            int windowMinutes = Configuration.GetValue("RateLimiting:Applications:WindowMinutes", 10);
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy(ApplicationsRateLimit, httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = permitLimit,
+                            Window = TimeSpan.FromMinutes(windowMinutes),
+                            QueueLimit = 0,
+                        }));
+            });
+
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseForwardedHeaders();
+
             if (Configuration.GetValue("Database:MigrateOnStartup", true))
             {
                 using var scope = app.ApplicationServices.CreateScope();
@@ -70,6 +105,7 @@ namespace Africa.Server
 
             app.UseRouting();
             app.UseCors(CorsPolicy);
+            app.UseRateLimiter();
             app.UseAuthorization();
             app.UseEndpoints(endpoints =>
             {
