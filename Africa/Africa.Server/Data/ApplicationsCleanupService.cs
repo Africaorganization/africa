@@ -13,15 +13,18 @@ namespace Africa.Server.Data
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
         private readonly ILogger<ApplicationsCleanupService> _logger;
+        private readonly IHostApplicationLifetime _lifetime;
 
         public ApplicationsCleanupService(
             IServiceScopeFactory scopeFactory,
             IConfiguration configuration,
-            ILogger<ApplicationsCleanupService> logger)
+            ILogger<ApplicationsCleanupService> logger,
+            IHostApplicationLifetime lifetime)
         {
             _scopeFactory = scopeFactory;
             _configuration = configuration;
             _logger = logger;
+            _lifetime = lifetime;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,6 +36,16 @@ namespace Africa.Server.Data
 
             var maxAge = TimeSpan.FromHours(_configuration.GetValue("Cleanup:MaxAgeHours", 12.0));
             var interval = TimeSpan.FromHours(_configuration.GetValue("Cleanup:IntervalHours", 12.0));
+
+            // Hosted services start before the web app runs its startup code, which
+            // applies database migrations. Wait until startup has finished so the
+            // schema is up to date before querying it.
+            var started = new TaskCompletionSource();
+            using (_lifetime.ApplicationStarted.Register(() => started.TrySetResult()))
+            using (stoppingToken.Register(() => started.TrySetCanceled(stoppingToken)))
+            {
+                await started.Task;
+            }
 
             using var timer = new PeriodicTimer(interval);
             do
