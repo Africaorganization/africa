@@ -24,7 +24,13 @@ namespace Africa.Server
                 ?? throw new InvalidOperationException(
                     "Connection string 'ApplicationTable' is not configured. " +
                     "Set it in appsettings or via the ConnectionStrings__ApplicationTable environment variable.");
-            services.AddDbContext<ApplicationsContext>(opt => opt.UseSqlServer(conn));
+            // Retry transient SQL errors, e.g. 40613 while a serverless Azure SQL
+            // database is resuming from auto-pause (can take about a minute).
+            services.AddDbContext<ApplicationsContext>(opt => opt.UseSqlServer(conn, sql =>
+                sql.EnableRetryOnFailure(
+                    maxRetryCount: 10,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null)));
 
             // Only needed if the client is hosted on a different origin than the API.
             // In production the client is served by this app, so the list can stay empty.

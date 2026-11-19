@@ -49,7 +49,7 @@ export default {
   methods: {
     onSendApplication() {
       console.log(this.applicationData);
-      return axios.post("https://localhost:7272/api/Applications", {
+      return axios.post("/api/Applications", {
         name: this.applicationData.name,
         email: this.applicationData.email,
         phoneNumber: this.applicationData.phone,
