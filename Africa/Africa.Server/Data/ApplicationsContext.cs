@@ -12,6 +12,10 @@ namespace Africa.Server.Data
         public DbSet<Application> Applications { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            // Rows that existed before CreatedAt was added get the migration time.
+            builder.Entity<Application>()
+                .Property(a => a.CreatedAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
         }
     }
 }

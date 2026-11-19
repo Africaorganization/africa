@@ -73,6 +73,8 @@ namespace Africa.Server
                         }));
             });
 
+            services.AddHostedService<ApplicationsCleanupService>();
+
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
         }

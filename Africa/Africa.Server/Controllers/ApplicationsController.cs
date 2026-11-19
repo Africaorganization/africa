@@ -32,6 +32,7 @@ namespace Africa.Server.Controllers
             application.Name = applicationModel.Name;
             application.PhoneNumber = applicationModel.PhoneNumber;
             application.Email = applicationModel.Email;
+            application.CreatedAt = DateTime.UtcNow;
             
 
             _context.Applications.Add(application);

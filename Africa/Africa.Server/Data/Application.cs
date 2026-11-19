@@ -16,5 +16,8 @@ namespace Africa.Server.Data
         [Required(ErrorMessage = "Phone number is required")]
         [Phone(ErrorMessage = "Invalid Phone Number")]
         public string PhoneNumber { get; set; } = string.Empty;
+
+        // UTC time the application was submitted; used to delete old applications.
+        public DateTime CreatedAt { get; set; }
     }
 }
