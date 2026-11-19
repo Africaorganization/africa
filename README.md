@@ -66,6 +66,11 @@ Other settings (`appsettings.json`):
 |---|---|---|
 | `Database:MigrateOnStartup` | `true` | Apply EF Core migrations automatically when the app starts |
 | `Cors:AllowedOrigins` | `[]` | Extra origins allowed to call the API (only needed if the client is hosted elsewhere) |
+| `RateLimiting:Applications:PermitLimit` | `5` | Applications one visitor (IP) can submit per window; extra requests get `429` |
+| `RateLimiting:Applications:WindowMinutes` | `10` | Length of the rate-limit window |
+| `Cleanup:Enabled` | `true` | Automatically delete old applications |
+| `Cleanup:MaxAgeHours` | `12` | Applications older than this are deleted |
+| `Cleanup:IntervalHours` | `12` | How often the cleanup runs while the app is awake (it also runs on every start) |
 
 Database connections retry transient errors automatically, so the app survives a
 serverless Azure SQL database waking up from auto-pause.
