@@ -2,6 +2,7 @@
 using Africa.Server.Data;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Africa.Server
@@ -28,6 +29,19 @@ namespace Africa.Server
                 ?? throw new InvalidOperationException(
                     "Connection string 'ApplicationTable' is not configured. " +
                     "Set it in appsettings or via the ConnectionStrings__ApplicationTable environment variable.");
+
+            // A serverless Azure SQL database that is resuming from auto-pause can hold
+            // the login open for up to about a minute. With the default 30 s connect
+            // timeout the login times out (error -2), which EF does not retry, so the
+            // request fails with a 500. Give the connection enough time to wait it out.
+            var connBuilder = new SqlConnectionStringBuilder(conn);
+            int minConnectTimeout = Configuration.GetValue("Database:MinConnectTimeoutSeconds", 90);
+            if (connBuilder.ConnectTimeout < minConnectTimeout)
+            {
+                connBuilder.ConnectTimeout = minConnectTimeout;
+            }
+            conn = connBuilder.ConnectionString;
+
             // Retry transient SQL errors, e.g. 40613 while a serverless Azure SQL
             // database is resuming from auto-pause (can take about a minute).
             services.AddDbContext<ApplicationsContext>(opt => opt.UseSqlServer(conn, sql =>

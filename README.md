@@ -65,6 +65,7 @@ Other settings (`appsettings.json`):
 | Setting | Default | Meaning |
 |---|---|---|
 | `Database:MigrateOnStartup` | `true` | Apply EF Core migrations automatically when the app starts |
+| `Database:MinConnectTimeoutSeconds` | `90` | Minimum SQL connect timeout, so a request can wait for a paused serverless database to resume |
 | `Cors:AllowedOrigins` | `[]` | Extra origins allowed to call the API (only needed if the client is hosted elsewhere) |
 | `RateLimiting:Applications:PermitLimit` | `5` | Applications one visitor (IP) can submit per window; extra requests get `429` |
 | `RateLimiting:Applications:WindowMinutes` | `10` | Length of the rate-limit window |
